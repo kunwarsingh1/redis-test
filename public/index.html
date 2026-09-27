@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Redis + Worker Testbed</title>
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot" id="live-dot"></span>
+      <h1>Redis + Worker Testbed</h1>
+    </div>
+    <div class="topbar-actions">
+      <label class="poll">
+        Refresh
+        <select id="poll-rate">
+          <option value="1000">1s</option>
+          <option value="2000" selected>2s</option>
+          <option value="5000">5s</option>
+          <option value="0">Off</option>
+        </select>
+      </label>
+      <button id="refresh-now" class="btn">Refresh now</button>
+      <button id="reset" class="btn btn-danger" title="Delete every key owned by this app">Reset data</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Overall verdict ------------------------------------------------->
+    <section id="verdict" class="verdict verdict-unknown">
+      <span class="verdict-icon" id="verdict-icon">…</span>
+      <div>
+        <strong id="verdict-title">Connecting…</strong>
+        <p id="verdict-detail">Waiting for the first status response.</p>
+      </div>
+    </section>
+
+    <!-- Status cards ---------------------------------------------------->
+    <section class="cards">
+      <article class="card" id="card-redis">
+        <header>
+          <h2>Redis</h2>
+          <span class="pill" id="redis-state">unknown</span>
+        </header>
+        <dl class="kv">
+          <div><dt>Endpoint</dt><dd id="redis-url">–</dd></div>
+          <div><dt>Ping</dt><dd id="redis-latency">–</dd></div>
+          <div><dt>Version</dt><dd id="redis-version">–</dd></div>
+          <div><dt>Uptime</dt><dd id="redis-uptime">–</dd></div>
+          <div><dt>Memory</dt><dd id="redis-memory">–</dd></div>
+          <div><dt>Clients</dt><dd id="redis-clients">–</dd></div>
+          <div><dt>Keys in DB</dt><dd id="redis-dbsize">–</dd></div>
+          <div><dt>Commands</dt><dd id="redis-commands">–</dd></div>
+        </dl>
+        <p class="error hidden" id="redis-error"></p>
+      </article>
+
+      <article class="card" id="card-workers">
+        <header>
+          <h2>Worker script</h2>
+          <span class="pill" id="worker-state">unknown</span>
+        </header>
+        <dl class="kv">
+          <div><dt>Workers</dt><dd id="worker-count">–</dd></div>
+          <div><dt>Online</dt><dd id="worker-online">–</dd></div>
+          <div><dt>Completed</dt><dd id="worker-completed">–</dd></div>
+          <div><dt>Failed</dt><dd id="worker-failed">–</dd></div>
+          <div><dt>Queue depth</dt><dd id="queue-depth">–</dd></div>
+        </dl>
+        <ul class="worker-list" id="worker-list"></ul>
+        <p class="error hidden" id="worker-error"></p>
+      </article>
+
+      <article class="card" id="card-api">
+        <header>
+          <h2>API server</h2>
+          <span class="pill" id="api-state">unknown</span>
+        </header>
+        <dl class="kv">
+          <div><dt>PID</dt><dd id="api-pid">–</dd></div>
+          <div><dt>Node</dt><dd id="api-node">–</dd></div>
+          <div><dt>Host</dt><dd id="api-host">–</dd></div>
+          <div><dt>Uptime</dt><dd id="api-uptime">–</dd></div>
+          <div><dt>Key prefix</dt><dd id="api-prefix">–</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <!-- Enqueue a job --------------------------------------------------->
+    <section class="panel">
+      <header class="panel-header">
+        <h2>Queue a task</h2>
+        <span class="hint">Jobs are pushed onto a Redis list; a worker pops them with <code>BRPOPLPUSH</code>.</span>
+      </header>
+      <form id="enqueue-form" class="enqueue">
+        <div class="field">
+          <label for="task-type">Task</label>
+          <select id="task-type"></select>
+        </div>
+        <p class="task-desc" id="task-desc"></p>
+        <div class="field-row" id="task-fields"></div>
+        <div class="field grow">
+          <label for="task-json">Payload (JSON, overrides the fields above)</label>
+          <input type="text" id="task-json" placeholder='{"ms":1500}' spellcheck="false" />
+        </div>
+        <button type="submit" class="btn btn-primary" id="enqueue-btn">Enqueue job</button>
+      </form>
+      <p class="error hidden" id="enqueue-error"></p>
+    </section>
+
+    <!-- Jobs ------------------------------------------------------------>
+    <section class="panel">
+      <header class="panel-header">
+        <h2>Jobs</h2>
+        <span class="hint" id="jobs-count"></span>
+      </header>
+      <div class="table-wrap">
+        <table class="jobs">
+          <thead>
+            <tr>
+              <th>Job</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Progress</th>
+              <th>Worker</th>
+              <th>Duration</th>
+              <th>Detail</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="jobs-body">
+            <tr class="empty"><td colspan="8">No jobs yet — enqueue one above.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Activity log ---------------------------------------------------->
+    <section class="panel">
+      <header class="panel-header">
+        <h2>Activity</h2>
+        <span class="hint">Events written by the API and the workers into Redis.</span>
+      </header>
+      <ul class="events" id="events"></ul>
+    </section>
+  </main>
+
+  <footer>
+    <span id="footer-updated">–</span>
+    <span class="footer-note">Data source: <code>GET /api/status</code> · namespace <code id="footer-prefix">–</code></span>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
